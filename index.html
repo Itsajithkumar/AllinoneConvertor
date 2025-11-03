@@ -179,7 +179,7 @@
       position: relative;
     }
     .hero h1 {
-      font-size: 2.5rem;
+      font-size: 2rem; /* Reduced from 2.5rem */
       margin: 0 0 10px 0;
       font-weight: 900;
       background: linear-gradient(90deg, var(--primary), var(--accent));
@@ -430,6 +430,12 @@
 
       <div class="upload-area" aria-label="Drop, upload or paste images" id="uploadArea">
         <img src="" alt="preview" class="upload-icon" id="uploadPreview" style="display:none"/>
+        <!-- Small preview panel START -->
+        <div id="miniPreviewBox" style="display:none; margin-bottom:10px; text-align:center;">
+          <img id="miniPreviewImg" src="" alt="file preview" style="max-width:80px; max-height:80px; border-radius:8px; display:inline-block;"/>
+          <div id="miniFileInfo" class="small"></div>
+        </div>
+        <!-- Small preview panel END -->
         <div style="max-width:760px;text-align:center">
           <h2 style="margin:0 0 6px;font-size:18px">Drop, Upload or Paste Files</h2>
           <div class="small">Supported: Photos, screenshots, scanned documents, and more. Everything is processed privately on your device.</div>
@@ -453,11 +459,6 @@
           <button class="btn" id="downloadBtn" style="display:none" type="button">Download</button>
         </div>
         <div class="status" id="uploadStatus" aria-live="polite"></div>
-        <div class="preview-box" id="previewBox" style="display:none; margin-top:12px;">
-          <div class="small">Preview</div>
-          <img id="previewImg" src="" alt="preview" style="max-width:100%;border-radius:8px;display:block" />
-          <div id="fileInfo" class="small"></div>
-        </div>
         <small class="small">No sign-up or subscription needed.</small>
       </div>
       <div class="result-area">
@@ -494,15 +495,15 @@
     // Elements
     const fileInput = document.getElementById('fileInput');
     const uploadPreview = document.getElementById('uploadPreview');
-    const previewBox = document.getElementById('previewBox');
-    const previewImg = document.getElementById('previewImg');
-    const fileInfo = document.getElementById('fileInfo');
     const uploadStatus = document.getElementById('uploadStatus');
     const convertBtn = document.getElementById('convertBtn');
     const toolSelect = document.getElementById('toolSelect');
     const resultBox = document.getElementById('result');
     const downloadBtn = document.getElementById('downloadBtn');
     const toolCards = document.querySelectorAll('.tool-card');
+    const miniPreviewBox = document.getElementById('miniPreviewBox');
+    const miniPreviewImg = document.getElementById('miniPreviewImg');
+    const miniFileInfo = document.getElementById('miniFileInfo');
 
     // pdf.js worker
     pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
@@ -543,22 +544,26 @@
     fileInput.addEventListener('change', (ev) => {
       clearResult();
       const f = ev.target.files && ev.target.files[0];
-      if(!f) return;
+      if(!f) {
+        miniPreviewBox.style.display = 'none';
+        return;
+      }
       showStatus('File selected: ' + f.name);
-      fileInfo.textContent = `${f.name} — ${Math.round(f.size/1024)} KB`;
-      previewBox.style.display = 'none';
+      uploadPreview.style.display = 'none';
+      // Small preview logic
       if(f.type.startsWith('image/')) {
         const url = URL.createObjectURL(f);
-        uploadPreview.src = url;
-        uploadPreview.style.display = 'block';
-        previewImg.src = url;
-        previewBox.style.display = 'flex';
+        miniPreviewImg.src = url;
+        miniPreviewImg.style.display = 'inline-block';
+        miniFileInfo.textContent = `${f.name} — ${Math.round(f.size/1024)} KB`;
+        miniPreviewBox.style.display = 'block';
       } else if(f.type === 'application/pdf') {
-        uploadPreview.style.display = 'none';
-        previewBox.style.display = 'flex';
-        previewImg.src = '/favicon.ico';
+        miniPreviewImg.src = '/favicon.ico';
+        miniPreviewImg.style.display = 'inline-block';
+        miniFileInfo.textContent = `${f.name} — ${Math.round(f.size/1024)} KB`;
+        miniPreviewBox.style.display = 'block';
       } else {
-        uploadPreview.style.display = 'none';
+        miniPreviewBox.style.display = 'none';
       }
     });
 
@@ -579,8 +584,7 @@
                 const dt = new DataTransfer();
                 dt.items.add(new File([blob], 'pasted-image.png', {type: blob.type}));
                 fileInput.files = dt.files;
-                previewImg.src = url;
-                previewBox.style.display = 'flex';
+                uploadPreview.style.display = 'block';
                 showStatus('Image pasted from clipboard.');
                 return;
               }
@@ -620,8 +624,7 @@
                 const dt = new DataTransfer();
                 dt.items.add(new File([blob], 'pasted-image.png', {type: blob.type}));
                 fileInput.files = dt.files;
-                previewImg.src = url;
-                previewBox.style.display = 'flex';
+                uploadPreview.style.display = 'block';
                 showStatus('Image pasted from clipboard.');
                 e.preventDefault();
                 return;
@@ -638,7 +641,7 @@
       fileInput.value = '';
       uploadPreview.src = '';
       uploadPreview.style.display = 'none';
-      previewBox.style.display = 'none';
+      miniPreviewBox.style.display = 'none';
       clearResult();
       showStatus('Cleared.');
     });
