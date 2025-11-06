@@ -37,11 +37,16 @@
   <!-- Structured Data (JSON-LD) -->
   <script type="application/ld+json">
   {
-    "@context":"https://schema.org",
-    "@type":"WebSite",
-    "name":"ImgVerse",
-    "url":"https://www.yoursaasdomain.com/",
-    "description":"Convert images and documents instantly: extract text from images, convert PDFs, generate and scan QR codes. 100% free, private, and no account needed."
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    "name": "ImgVerse",
+    "url": "https://imgverse-convertor.netlify.app/",
+    "description": "Convert images and documents instantly: extract text from images, convert PDFs, generate and scan QR codes. 100% free, private, and no account needed.",
+    "potentialAction": {
+      "@type": "SearchAction",
+      "target": "https://imgverse-convertor.netlify.app/?q={search_term_string}",
+      "query-input": "required name=search_term_string"
+    }
   }
   </script>
 
