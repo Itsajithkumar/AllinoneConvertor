@@ -434,8 +434,8 @@
     </header>
 
     <section class="hero" role="main" aria-labelledby="hero-heading">
-      <h1 id="hero-heading">Fast, private file tools — No subscription</h1>
-      <p>Work with your images and documents right in your browser. Choose a tool, upload or paste a file, then press Start. Your results appear below and can be downloaded.</p>
+      <h1 id="hero-heading">Convert Images & PDFs Instantly — 100% Private, No Registration</h1>
+      <p>Start converting in seconds. Your files never leave your device.</p>
 
       <div class="upload-area" aria-label="Drop, upload or paste images" id="uploadArea">
         <img src="" alt="preview" class="upload-icon" id="uploadPreview" style="display:none"/>
@@ -465,7 +465,9 @@
             <option value="qr-scan">QR Code Scan</option>
           </select>
           <button class="btn primary" id="convertBtn" type="button">Start</button>
-          <button class="btn" id="downloadBtn" style="display:none" type="button">Download</button>
+          <button id="downloadBtn" class="btn primary" style="display:none;">
+  Download Result (PDF)
+</button>
         </div>
         <div class="status" id="uploadStatus" aria-live="polite"></div>
         <small class="small">No sign-up or subscription needed.</small>
@@ -484,12 +486,35 @@
       </div>
     </section>
 
+    <section id="faq">
+  <h2>Frequently Asked Questions</h2>
+  <h3>What file types are supported?</h3>
+  <p>JPG, PNG, PDF, TIFF, BMP up to 20MB each.</p>
+  <h3>Is my data private?</h3>
+  <p>Yes, all processing happens in your browser. No files are uploaded to any server.</p>
+  <!-- Add more Q&A as needed -->
+</section>
+
     <footer style="margin-top:60px;padding:26px 0;color:var(--muted);font-size:13px">
       <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px">
         <div>&copy; <span id="year"></span> ImgVerse — All rights reserved</div>
         <div class="small">All tools run privately in your browser.</div>
       </div>
+      <div>
+        <a href="/about.html" style="color:var(--muted);text-decoration:none;font-size:14px;margin-right:12px;">About</a>
+        <a href="/privacy.html" style="color:var(--muted);text-decoration:none;font-size:14px;margin-right:12px;">Privacy Policy</a>
+        <a href="/contact.html" style="color:var(--muted);text-decoration:none;font-size:14px;">Contact</a>
+      </div>
+      <div class="small" style="margin-top:8px;">
+        Open source & client-side only — <a href="https://github.com/yourrepo" style="color:var(--primary);text-decoration:underline;">View on GitHub</a>
+      </div>
     </footer>
+  </div>
+
+  <!-- Spinner -->
+  <div id="loadingSpinner" style="display:none;text-align:center;">
+    <img src="spinner.svg" alt="Loading..." style="width:32px;height:32px;">
+    <div>Processing, please wait...</div>
   </div>
 
   <!-- Libraries (deferred) -->
@@ -898,6 +923,11 @@
         // convertBtn.click();
       });
     });
+
+    function showError(msg) {
+      document.getElementById('errorMsg').textContent = msg;
+      document.getElementById('errorMsg').style.display = 'block';
+    }
   </script>
   <!-- FAQ Structured Data for SEO -->
   <script type="application/ld+json">
@@ -957,5 +987,24 @@
       (adsbygoogle = window.adsbygoogle || []).push({});
     </script>
   </div>
+
+  <!-- Supported Formats Info -->
+  <div class="small" style="margin-top:8px;">
+    <strong>Supported formats:</strong> JPG, PNG, PDF, TIFF, BMP. Max size: 20MB per file.
+  </div>
+
+  <div id="errorMsg" class="error" style="display:none;color:#d32f2f;"></div>
+
+  <!-- Benefits List -->
+  <ul class="benefits-list" style="max-width:760px;margin:24px auto;padding:0;list-style:none;text-align:left;">
+    <li style="font-size:16px;line-height:1.6;margin-bottom:8px;">⚡ <strong>Fast, instant conversion</strong></li>
+    <li style="font-size:16px;line-height:1.6;margin-bottom:8px;">🔒 <strong>Files processed only in your browser</strong></li>
+    <li style="font-size:16px;line-height:1.6;margin-bottom:8px;">🖼️ <strong>Supports JPG, PNG, PDF, and more</strong></li>
+    <li style="font-size:16px;line-height:1.6;margin-bottom:8px;">💸 <strong>Free, no sign-up required</strong></li>
+  </ul>
+
+  <noscript>
+  <div class="error">This site requires JavaScript to function. Please enable JavaScript in your browser.</div>
+  </noscript>
 </body>
 </html>
