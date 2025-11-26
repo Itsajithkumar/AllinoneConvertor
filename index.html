@@ -688,10 +688,16 @@
 
     // helpers
     async function getFileBlob() {
+      // priority: file input -> uploadPreview blob URLs -> nothing
       if (fileInput.files && fileInput.files[0]) return fileInput.files[0];
-      if (uploadPreview.src && !uploadPreview.src.startsWith('')) {
-        const r = await fetch(uploadPreview.src);
-        return await r.blob();
+      // uploadPreview.src may be a blob: or data: url
+      if (uploadPreview.src && uploadPreview.src.length > 0) {
+        try {
+          const r = await fetch(uploadPreview.src);
+          return await r.blob();
+        } catch (e) {
+          console.warn('Failed to fetch preview src as blob', e);
+        }
       }
       return null;
     }
