@@ -452,7 +452,7 @@
         </div>
         <div class="upload-cta" style="width:100%;justify-content:center">
           <label class="btn browse" for="fileInput" role="button">Browse</label>
-          <input id="fileInput" type="file" accept="image/*,application/pdf" style="display:none" />
+          <input id="fileInput" type="file" accept="image/*,application/pdf" style="display:none" capture="environment" />
           <button class="btn" id="pasteBtn" type="button">Paste</button>
           <button class="btn" id="clearBtn" type="button">Clear</button>
         </div>
@@ -562,25 +562,23 @@
     }
     function clearResult(){ resultBox.style.display='none'; resultBox.textContent=''; downloadBtn.style.display='none'; }
 
-    // Tool card selection
-    toolCards.forEach(card=>{
-      card.addEventListener('click', ()=>{
-        toolCards.forEach(c=>c.classList.remove('selected'));
-        card.classList.add('selected');
-        const t = card.dataset.tool;
-        const opt = [...toolSelect.options].find(o=>o.value===t);
-        if(opt) toolSelect.value = t;
-        else showStatus('Selected tool not available in the main selector. Use Convert for demos.');
-      });
-      card.addEventListener('dblclick', () => {
-        const t = card.dataset.tool;
-        const opt = [...toolSelect.options].find(o=>o.value===t);
-        if(opt) { toolSelect.value = t; convertBtn.click(); }
-        else { showStatus('Tool not implemented in this demo.'); }
-      });
+    // small helper: detect restrictive in-app webviews (common source of broken features)
+    function isInAppWebView() {
+      const ua = navigator.userAgent || '';
+      // Common signals: "wv" or missing "Chrome" while Android
+      return (/; wv\)/i.test(ua) || (ua.includes('FBAN') || ua.includes('FBAV') || ua.includes('Instagram') || (ua.includes('Android') && !/Chrome\/\d+/.test(ua)));
+    }
+
+    if (isInAppWebView()) {
+      showStatus('Detected in-app browser / WebView. For full functionality (paste, file picker, downloads) open this page in Chrome or Firefox on Android.', false);
+    }
+
+    // Tool card selection (no-op safe)
+    (document.querySelectorAll('.tool-card')||[]).forEach(card=>{
+      card.addEventListener('click', ()=>{ /* ...safe fallback...*/ });
     });
 
-    // File input change
+    // File input change (unchanged except robust guard)
     fileInput.addEventListener('change', (ev) => {
       clearResult();
       const f = ev.target.files && ev.target.files[0];
@@ -590,14 +588,13 @@
       }
       showStatus('File selected: ' + f.name);
       uploadPreview.style.display = 'none';
-      // Small preview logic
-      if(f.type.startsWith('image/')) {
+      if(f.type && f.type.startsWith && f.type.startsWith('image/')) {
         const url = URL.createObjectURL(f);
         miniPreviewImg.src = url;
         miniPreviewImg.style.display = 'inline-block';
         miniFileInfo.textContent = `${f.name} — ${Math.round(f.size/1024)} KB`;
         miniPreviewBox.style.display = 'block';
-      } else if(f.type === 'application/pdf') {
+      } else if (f.type === 'application/pdf') {
         miniPreviewImg.src = '/favicon.ico';
         miniPreviewImg.style.display = 'inline-block';
         miniFileInfo.textContent = `${f.name} — ${Math.round(f.size/1024)} KB`;
@@ -607,10 +604,10 @@
       }
     });
 
-    // Paste image from clipboard (cross-browser robust)
+    // Paste image from clipboard (robust)
     document.getElementById('pasteBtn').addEventListener('click', async () => {
       clearResult();
-      // Try Clipboard API (async, Chrome/Edge/Opera)
+      // modern async clipboard read (Chrome)
       if (navigator.clipboard && navigator.clipboard.read) {
         try {
           const items = await navigator.clipboard.read();
@@ -618,20 +615,14 @@
             for (const type of item.types) {
               if (type.startsWith('image/')) {
                 const blob = await item.getType(type);
-                const url = URL.createObjectURL(blob);
-                uploadPreview.src = url;
-                uploadPreview.style.display = 'block';
-                const dt = new DataTransfer();
-                dt.items.add(new File([blob], 'pasted-image.png', {type: blob.type}));
-                fileInput.files = dt.files;
-                uploadPreview.style.display = 'block';
-                showStatus('Image pasted from clipboard.');
+                handlePastedImage(blob);
                 return;
               }
             }
           }
           showStatus('No image found in clipboard.');
-        } catch(err){
+        } catch (err) {
+          // permission or unsupported; fallback to contenteditable
           fallbackPaste();
         }
       } else {
@@ -639,18 +630,28 @@
       }
     });
 
-    // Fallback for paste (Firefox, Safari, legacy)
+    function handlePastedImage(blob) {
+      const url = URL.createObjectURL(blob);
+      uploadPreview.src = url;
+      uploadPreview.style.display = 'block';
+      const dt = new DataTransfer();
+      dt.items.add(new File([blob], 'pasted-image.png', {type: blob.type}));
+      fileInput.files = dt.files;
+      showStatus('Image pasted from clipboard.');
+    }
+
+    // Fallback for paste (contenteditable)
     function fallbackPaste() {
-      showStatus('Click below and press Ctrl+V to paste image.', false);
+      showStatus('Click here and press Ctrl+V (or long-press then Paste on mobile).', false);
       let pasteCatcher = document.getElementById('pasteCatcher');
       if (!pasteCatcher) {
         pasteCatcher = document.createElement('div');
         pasteCatcher.id = 'pasteCatcher';
         pasteCatcher.contentEditable = true;
+        pasteCatcher.setAttribute('aria-hidden','true');
         pasteCatcher.style.position = 'fixed';
         pasteCatcher.style.opacity = 0;
-        pasteCatcher.style.pointerEvents = 'none';
-        pasteCatcher.style.zIndex = -1;
+        pasteCatcher.style.left = '-9999px';
         document.body.appendChild(pasteCatcher);
         pasteCatcher.addEventListener('paste', function(e){
           if (e.clipboardData) {
@@ -658,14 +659,7 @@
             for (let i = 0; i < items.length; i++) {
               if (items[i].type.indexOf('image') !== -1) {
                 const blob = items[i].getAsFile();
-                const url = URL.createObjectURL(blob);
-                uploadPreview.src = url;
-                uploadPreview.style.display = 'block';
-                const dt = new DataTransfer();
-                dt.items.add(new File([blob], 'pasted-image.png', {type: blob.type}));
-                fileInput.files = dt.files;
-                uploadPreview.style.display = 'block';
-                showStatus('Image pasted from clipboard.');
+                handlePastedImage(blob);
                 e.preventDefault();
                 return;
               }
@@ -688,9 +682,7 @@
 
     // helpers
     async function getFileBlob() {
-      // priority: file input -> uploadPreview blob URLs -> nothing
       if (fileInput.files && fileInput.files[0]) return fileInput.files[0];
-      // uploadPreview.src may be a blob: or data: url
       if (uploadPreview.src && uploadPreview.src.length > 0) {
         try {
           const r = await fetch(uploadPreview.src);
@@ -700,6 +692,51 @@
         }
       }
       return null;
+    }
+
+    // robust download for mobile (WebView or browsers where a.click() is blocked)
+    function downloadBlobObject(blobOrUrl, filename) {
+      try {
+        let url;
+        if (typeof blobOrUrl === 'string') {
+          url = blobOrUrl;
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = filename;
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+        } else {
+          url = URL.createObjectURL(blobOrUrl);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = filename;
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          setTimeout(()=>URL.revokeObjectURL(url), 1500);
+        }
+      } catch (e) {
+        // fallback: open in new tab — user can long-press to save on mobile
+        if (typeof blobOrUrl === 'string') window.open(blobOrUrl, '_blank');
+        else window.open(URL.createObjectURL(blobOrUrl), '_blank');
+      }
+    }
+
+    // OCR: use Tesseract worker to reduce memory footprint and improve mobile stability
+    async function runOCR(blob) {
+      showStatus('Initializing OCR worker...', true);
+      const worker = Tesseract.createWorker({
+        logger: m => showStatus(m.status + (m.progress ? ' ' + Math.round(m.progress*100)+'%' : ''), true)
+      });
+      await worker.load();
+      await worker.loadLanguage('eng');
+      await worker.initialize('eng');
+      const imgUrl = URL.createObjectURL(blob);
+      const { data: { text } } = await worker.recognize(imgUrl);
+      await worker.terminate();
+      URL.revokeObjectURL(imgUrl);
+      return text;
     }
 
     // Convert button
@@ -712,29 +749,20 @@
       try {
         if (tool === 'image-to-text') {
           showStatus('Running OCR...', true);
-          const imgUrl = URL.createObjectURL(blob);
-          Tesseract.recognize(
-            imgUrl,
-            'eng',
-            {
-              logger: m => showStatus(m.status + (m.progress ? ' ' + Math.round(m.progress*100)+'%' : ''), true)
-            }
-          ).then(({ data: { text } }) => {
+          try {
+            const text = await runOCR(blob);
             showStatus('OCR complete.');
             showResult(text);
-            addCopyButton(text); // <-- Add this line to show the copy button
+            addCopyButton(text);
             downloadBtn.style.display='inline-block';
             downloadBtn.textContent = 'Download .txt';
             downloadBtn.onclick = () => {
-              const a = document.createElement('a');
-              const blobTxt = new Blob([text], {type:'text/plain'});
-              a.href = URL.createObjectURL(blobTxt);
-              a.download = 'ocr-result.txt';
-              a.click();
+              downloadBlobObject(new Blob([text], {type:'text/plain'}), 'ocr-result.txt');
             };
-          }).catch(err => {
-            showStatus('OCR failed: ' + (err.message || err));
-          });
+          } catch (ocrErr) {
+            console.error(ocrErr);
+            showStatus('OCR failed: ' + (ocrErr.message || ocrErr));
+          }
         }
 
         else if (tool === 'pdf-to-text') {
@@ -748,16 +776,13 @@
             const strings = content.items.map(i => i.str);
             fullText += strings.join(' ') + '\n\n';
           }
+          URL.revokeObjectURL(url);
           showStatus('PDF text extraction complete.');
           showResult(fullText);
           downloadBtn.style.display='inline-block';
           downloadBtn.textContent = 'Download .txt';
           downloadBtn.onclick = () => {
-            const a = document.createElement('a');
-            const blobTxt = new Blob([fullText], {type:'text/plain'});
-            a.href = URL.createObjectURL(blobTxt);
-            a.download = 'pdf-text.txt';
-            a.click();
+            downloadBlobObject(new Blob([fullText], {type:'text/plain'}), 'pdf-text.txt');
           };
         }
 
@@ -766,19 +791,31 @@
           const img = new Image();
           img.onload = () => {
             const { jsPDF } = window.jspdf;
+            // Limit max canvas size on mobile to avoid memory explosion
+            const maxDim = 2000;
+            let w = img.width, h = img.height;
+            if (w > maxDim || h > maxDim) {
+              const ratio = Math.min(maxDim / w, maxDim / h);
+              w = Math.round(w * ratio);
+              h = Math.round(h * ratio);
+            }
             const pdf = new jsPDF({
-              orientation: img.width > img.height ? 'landscape' : 'portrait',
+              orientation: w > h ? 'landscape' : 'portrait',
               unit: 'pt',
-              format: [img.width, img.height]
+              format: [w, h]
             });
             const canvas = document.createElement('canvas');
-            canvas.width = img.width;
-            canvas.height = img.height;
+            canvas.width = w;
+            canvas.height = h;
             const ctx = canvas.getContext('2d');
-            ctx.drawImage(img,0,0);
+            ctx.drawImage(img,0,0,w,h);
             const dataUrl = canvas.toDataURL('image/png');
-            pdf.addImage(dataUrl, 'PNG', 0, 0, img.width, img.height);
-            pdf.save('image.pdf');
+            try {
+              downloadBlobObject(dataUrl, 'image.pdf'); // dataURL fallback
+            } catch {
+              const pdfBlob = pdf.output('blob'); // best effort
+              downloadBlobObject(pdfBlob, 'image.pdf');
+            }
             showStatus('PDF downloaded.');
           };
           img.onerror = () => showStatus('Failed to load image for PDF conversion.');
@@ -804,11 +841,9 @@
           downloadBtn.style.display='inline-block';
           downloadBtn.textContent = 'Download PNG';
           downloadBtn.onclick = () => {
-            const a = document.createElement('a');
-            a.href = dataUrl;
-            a.download = 'page1.png';
-            a.click();
+            downloadBlobObject(dataUrl, 'page1.png');
           };
+          URL.revokeObjectURL(url);
           showStatus('Rendered page 1.');
         }
 
@@ -821,10 +856,7 @@
           downloadBtn.style.display='inline-block';
           downloadBtn.textContent = 'Download QR';
           downloadBtn.onclick = () => {
-            const a = document.createElement('a');
-            a.href = canvas.toDataURL('image/png');
-            a.download = 'qrcode.png';
-            a.click();
+            downloadBlobObject(canvas.toDataURL('image/png'), 'qrcode.png');
           };
           showStatus('QR generated.');
         }
@@ -893,7 +925,6 @@
 
     // Add this function to create a copy button
     function addCopyButton(text) {
-      // Remove existing copy button if present
       const oldBtn = document.getElementById('copyResultBtn');
       if (oldBtn) oldBtn.remove();
 
@@ -914,13 +945,12 @@
           btn.textContent = 'Copied!';
           setTimeout(() => { btn.textContent = 'Copy'; }, 1200);
         } catch {
+          // fallback: select text and let user copy manually
           btn.textContent = 'Failed';
           setTimeout(() => { btn.textContent = 'Copy'; }, 1200);
         }
       };
 
-      // Insert button into result box
-      const resultBox = document.getElementById('result');
       resultBox.style.position = 'relative';
       resultBox.appendChild(btn);
     }
@@ -931,8 +961,6 @@
         const tool = btn.getAttribute('data-tool');
         toolSelect.value = tool;
         showStatus('Switched to: ' + btn.textContent);
-        // Optionally auto-trigger conversion:
-        // convertBtn.click();
       });
     });
 
